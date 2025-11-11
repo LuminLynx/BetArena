@@ -30,8 +30,9 @@ async def db_health_check(db: Session = Depends(get_db)):
         # Try to query the database
         league_count = db.query(League).count()
         return {"ok": True, "database": "connected", "leagues_count": league_count}
-    except Exception as e:
-        return {"ok": False, "database": "error", "error": str(e)}
+    except Exception:
+        # Don't expose internal error details to external users
+        return {"ok": False, "database": "error"}
 
 
 @app.get("/")
