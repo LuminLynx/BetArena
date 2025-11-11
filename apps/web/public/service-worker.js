@@ -1,1 +1,157 @@
-if(!self.define){let e,s={};const t=(t,n)=>(t=new URL(t+".js",n).href,s[t]||new Promise(s=>{if("document"in self){const e=document.createElement("script");e.src=t,e.onload=s,document.head.appendChild(e)}else e=t,importScripts(t),s()}).then(()=>{let e=s[t];if(!e)throw new Error(`Module ${t} didn’t register its module`);return e}));self.define=(n,a)=>{const c=e||("document"in self?document.currentScript.src:"")||location.href;if(s[c])return;let i={};const r=e=>t(e,c),f={module:{uri:c},exports:i,require:r};s[c]=Promise.all(n.map(e=>f[e]||r(e))).then(e=>(a(...e),i))}}define(["./workbox-f52fd911"],function(e){"use strict";importScripts("fallback-ap6ntEaYnAmIrTVxa39tl.js"),self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"/_next/static/ap6ntEaYnAmIrTVxa39tl/_buildManifest.js",revision:"829307b18c158b29062d8674f5fd456b"},{url:"/_next/static/ap6ntEaYnAmIrTVxa39tl/_ssgManifest.js",revision:"b6652df95db52feb4daf4eca35380933"},{url:"/_next/static/chunks/framework-64ad27b21261a9ce.js",revision:"64ad27b21261a9ce"},{url:"/_next/static/chunks/main-d580ecf5c3b28b19.js",revision:"d580ecf5c3b28b19"},{url:"/_next/static/chunks/pages/_app-253f7865a753f025.js",revision:"253f7865a753f025"},{url:"/_next/static/chunks/pages/_error-7a92967bea80186d.js",revision:"7a92967bea80186d"},{url:"/_next/static/chunks/pages/index-e9a71c523989fdb3.js",revision:"e9a71c523989fdb3"},{url:"/_next/static/chunks/pages/offline-3cf7ed6f6726815c.js",revision:"3cf7ed6f6726815c"},{url:"/_next/static/chunks/polyfills-42372ed130431b0a.js",revision:"846118c33b2c0e922d7b3a7676f81f6f"},{url:"/_next/static/chunks/webpack-8fa1640cc84ba8fe.js",revision:"8fa1640cc84ba8fe"},{url:"/_next/static/css/7e2cc897549d9ed3.css",revision:"7e2cc897549d9ed3"},{url:"/_next/static/css/a8824cde37df9f75.css",revision:"a8824cde37df9f75"},{url:"/manifest.json",revision:"642762b5a7d9983046181341888d53e5"},{url:"/offline.html",revision:"6a1099e0729d0bab2f71c4fbf596501e"}],{ignoreURLParametersMatching:[]}),e.cleanupOutdatedCaches(),e.registerRoute("/",new e.NetworkFirst({cacheName:"start-url",plugins:[{cacheWillUpdate:async({request:e,response:s,event:t,state:n})=>s&&"opaqueredirect"===s.type?new Response(s.body,{status:200,statusText:"OK",headers:s.headers}):s},{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/^https?.*/,new e.NetworkFirst({cacheName:"http-cache",plugins:[new e.ExpirationPlugin({maxEntries:200,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/\/_next\/static\/.*/i,new e.CacheFirst({cacheName:"next-static",plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),self.__WB_DISABLE_DEV_LOGS=!0});
+const CACHE_NAME = 'betarena-v1';
+const urlsToCache = [
+  '/',
+  '/offline.html',
+];
+
+// Install event - cache essential files
+self.addEventListener('install', event => {
+  console.log('[ServiceWorker] Installing...');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('[ServiceWorker] Caching app shell');
+      return cache.addAll(urlsToCache).catch(err => {
+        console.log('[ServiceWorker] Cache addAll error:', err);
+      });
+    })
+  );
+  self.skipWaiting();
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', event => {
+  console.log('[ServiceWorker] Activating...');
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[ServiceWorker] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch event - network first, fallback to cache
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Skip non-GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Skip chrome extensions and api calls
+  if (url.protocol === 'chrome-extension:') {
+    return;
+  }
+
+  // API calls - network first, fallback to cache
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (!response || response.status !== 200) {
+            return response;
+          }
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, responseToCache);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then(response => {
+            return response || new Response('Offline - API unavailable', {
+              status: 503,
+              statusText: 'Service Unavailable',
+            });
+          });
+        })
+    );
+    return;
+  }
+
+  // Static assets - cache first, fallback to network
+  if (
+    request.destination === 'image' ||
+    request.destination === 'style' ||
+    request.destination === 'script' ||
+    request.destination === 'font'
+  ) {
+    event.respondWith(
+      caches.match(request).then(response => {
+        return (
+          response ||
+          fetch(request).then(networkResponse => {
+            if (!networkResponse || networkResponse.status !== 200) {
+              return networkResponse;
+            }
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(request, responseToCache);
+            });
+            return networkResponse;
+          })
+        );
+      })
+    );
+    return;
+  }
+
+  // Pages and documents - network first, fallback to cache
+  event.respondWith(
+    fetch(request)
+      .then(response => {
+        if (!response || response.status !== 200) {
+          return response;
+        }
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(request, responseToCache);
+        });
+        return response;
+      })
+      .catch(() => {
+        return caches.match(request);
+      })
+  );
+});
+
+// Handle background sync (optional)
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-data') {
+    event.waitUntil(syncData());
+  }
+});
+
+async function syncData() {
+  try {
+    // Add your background sync logic here
+    console.log('[ServiceWorker] Syncing data...');
+  } catch (error) {
+    console.error('[ServiceWorker] Sync failed:', error);
+  }
+}
+
+// Handle push notifications (optional)
+self.addEventListener('push', event => {
+  if (!event.data) return;
+
+  const options = {
+    body: event.data.text(),
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    tag: 'notification',
+    requireInteraction: false,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification('BetArena', options)
+  );
+});
