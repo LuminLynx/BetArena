@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+
+from app.core.db import get_db
+from app.models.league import League
 
 app = FastAPI(title="BetArena API", version="1.0.0")
 
@@ -17,6 +21,17 @@ app.add_middleware(
 async def health_check():
     """Health check endpoint"""
     return {"ok": True, "service": "api"}
+
+
+@app.get("/healthz/db")
+async def db_health_check(db: Session = Depends(get_db)):
+    """Database health check endpoint"""
+    try:
+        # Try to query the database
+        league_count = db.query(League).count()
+        return {"ok": True, "database": "connected", "leagues_count": league_count}
+    except Exception as e:
+        return {"ok": False, "database": "error", "error": str(e)}
 
 
 @app.get("/")
