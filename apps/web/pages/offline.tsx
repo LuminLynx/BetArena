@@ -1,9 +1,10 @@
 import React from 'react';
+import Head from 'next/head';
 
 export default function OfflinePage() {
   return (
     <html>
-      <head>
+      <Head>
         <title>Offline - BetArena</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <style>{`
@@ -62,13 +63,13 @@ export default function OfflinePage() {
             transform: translateY(0);
           }
         `}</style>
-      </head>
+      </Head>
       <body>
         <div className="container">
           <div className="icon">📡</div>
-          <h1>You're Offline</h1>
+          <h1>You&apos;re Offline</h1>
           <p>
-            It looks like you've lost your internet connection. Don't worry, you can still access some cached content.
+            It looks like you&apos;ve lost your internet connection. Don&apos;t worry, you can still access some cached content.
           </p>
           <p style={{ fontSize: '14px', color: '#999' }}>
             Some features may be limited until your connection is restored.
